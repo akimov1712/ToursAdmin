@@ -1,4 +1,4 @@
-package ru.topbun.toursadmin.models
+package ru.topbun.toursadmin.models.config
 
 import kotlinx.serialization.Serializable
 

@@ -41,6 +41,7 @@ object ApiFactory {
                 url("http://tourvisor.ru")
                 parameters.append("authlogin", "tyrmarketsamara@yandex.ru")
                 parameters.append("authpass", "gON5OLKRTTU4")
+                parameters.append("format", "json")
             }
         }
     }

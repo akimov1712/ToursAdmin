@@ -73,15 +73,14 @@ dependencies {
     debugImplementation(libs.accompanist.systemuicontroller)
     debugImplementation(libs.coil)
     debugImplementation(libs.coil.compose)
-    debugImplementation(libs.koin.android)
-    debugImplementation(libs.koin.compose)
     debugImplementation(libs.kotlinx.serialization.json)
+
     debugImplementation(libs.voyager.bottom.sheet.navigator)
-    debugImplementation(libs.voyager.koin)
     debugImplementation(libs.voyager.navigator)
     debugImplementation(libs.voyager.screenmodel)
     debugImplementation(libs.voyager.tab.navigator)
     debugImplementation(libs.voyager.transitions)
+
     debugImplementation(libs.androidx.appcompat)
     debugImplementation(libs.material)
     debugImplementation(libs.androidx.runtime.android)
