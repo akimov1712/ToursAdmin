@@ -89,4 +89,5 @@ dependencies {
     debugImplementation(libs.ktor.negotiation)
     debugImplementation(libs.ktor.kotlinx.serialization.json)
     debugImplementation(libs.ktor.logging.android)
+    implementation ("com.holix.android:bottomsheetdialog-compose:1.4.0")
 }

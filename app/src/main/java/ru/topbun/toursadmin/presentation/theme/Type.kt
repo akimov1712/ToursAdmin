@@ -1,4 +1,4 @@
-package ru.topbun.toursadmin.ui.theme
+package ru.topbun.toursadmin.presentation.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

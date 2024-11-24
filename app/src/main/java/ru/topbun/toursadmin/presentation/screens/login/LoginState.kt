@@ -1,4 +1,4 @@
-package ru.topbun.toursadmin.ui.screens.login
+package ru.topbun.toursadmin.presentation.screens.login
 
 data class LoginState(
     val password: String = "",

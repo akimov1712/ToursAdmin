@@ -1,7 +1,7 @@
-package ru.topbun.toursadmin.ui.screens.login
+package ru.topbun.toursadmin.presentation.screens.login
 
-import ru.topbun.toursadmin.ui.screens.login.LoginState.LoginScreenState.Error
-import ru.topbun.toursadmin.ui.screens.login.LoginState.LoginScreenState.Success
+import ru.topbun.toursadmin.presentation.screens.login.LoginState.LoginScreenState.Error
+import ru.topbun.toursadmin.presentation.screens.login.LoginState.LoginScreenState.Success
 import ru.topbun.toursadmin.utills.Const
 import ru.topbun.toursadmin.utills.ScreenModelState
 
