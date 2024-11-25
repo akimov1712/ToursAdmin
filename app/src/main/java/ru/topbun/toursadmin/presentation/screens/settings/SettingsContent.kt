@@ -1,22 +1,36 @@
 package ru.topbun.toursadmin.presentation.screens.settings
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material3.CalendarLocale
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DatePickerState
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -30,9 +44,12 @@ import androidx.compose.ui.unit.sp
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.core.screen.Screen
 import ru.topbun.toursadmin.presentation.theme.Colors
+import ru.topbun.toursadmin.utills.formatDate
+import java.time.Clock
 
 object SettingsScreen: Screen{
 
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     override fun Content() {
         Column(
@@ -48,10 +65,10 @@ object SettingsScreen: Screen{
 
             TitleWithButton("Город вылета", state.city?.name){ viewModel.showChoiceCity(true) }
             TitleWithTextField(
-                title = "Ближайшее кол-во дней на которое выдать туры",
+                title = "Ограничить дату вылета, на ближайшие дни",
                 placeholder = "Количество дней",
-                text = ""
-            ){  }
+                text = state.maxDays?.toString() ?: ""
+            ){ if(it.length < 4) viewModel.changeMaxDays(it)}
             val countriesTextButton = state.countries.joinToString { it.name }.takeIf { state.countries.isNotEmpty() }
             TitleWithButton("Страны", countriesTextButton){ viewModel.showChoiceCountry(true) }
 
@@ -61,33 +78,43 @@ object SettingsScreen: Screen{
             val operatorTextButton = state.operators.joinToString { it.name }.takeIf { state.operators.isNotEmpty() }
             TitleWithButton("Туроператоры", operatorTextButton){ viewModel.showChoiceOperator(true) }
 
-            TitleWithButton("С даты", null){}
-            TitleWithButton("По дату", null){}
+            TitleWithButton(
+                title = "С даты",
+                textButton = state.fromDate?.formatDate(),
+                onCancel = state.fromDate?.let{ { viewModel.changeFromDate(null) }}
+            ){ viewModel.showChoiceFromDate(true) }
+
+            TitleWithButton(
+                title = "По дату",
+                textButton = state.toDate?.formatDate(),
+                onCancel = state.toDate?.let{ { viewModel.changeToDate(null) }}
+            ){ viewModel.showChoiceToDate(true) }
+
             TitleWithButton("Мин. звездность отелей", state.star?.name){ viewModel.showChoiceStars(true) }
             TitleWithTextField(
                 title = "Мин. рейтинг отелей",
                 placeholder = "Рейтинг отелей",
-                text = "",
+                text = state.minRating ?: "",
                 keyboardType = KeyboardType.Decimal
-            ){  }
+            ){ if(it.length < 4) viewModel.changeRating(it) }
             TitleWithButton("Тип питания", state.meal?.russian){ viewModel.showChoiceMeal(true) }
             TitleWithTextField(
                 title = "Задержка между уникальными постами в днях",
                 placeholder = "Количество дней",
-                text = ""
-            ){  }
+                text = state.delayUniquePosts?.toString() ?: ""
+            ){ if(it.length < 4) viewModel.changeDelayUniquePosts(it) }
             TitleWithTextField(
                 title = "Задержка между постами в минутах",
                 placeholder = "Количество минут",
-                text = ""
-            ){  }
+                text = state.delayPostingMinutes?.toString() ?: ""
+            ){ if(it.length < 4) viewModel.changeDelayPostingMinutes(it) }
             TitleWithTextField(
                 title = "Домен сайта",
                 placeholder = "Введите домен",
-                text = "",
+                text = state.domain,
                 keyboardType = KeyboardType.Text
-            ){  }
-            SetPickDialogs(viewModel)
+            ){ viewModel.changeDomain(it) }
+            SetPickDialogs(viewModel = viewModel)
         }
     }
 }
@@ -101,6 +128,36 @@ private fun SetPickDialogs(viewModel: SettingsViewModel) {
     ChoiceCountryDialog(viewModel, state)
     ChoiceRegionDialog(viewModel, state)
     ChoiceOperatorDialog(viewModel, state)
+    ChoiceFromDateDialog(viewModel, state)
+    ChoiceToDateDialog(viewModel, state)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ChoiceFromDateDialog(viewModel: SettingsViewModel, state: SettingsState) {
+    if (state.showChoiceFromDate){
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = System.currentTimeMillis())
+        DialogDatePicker(
+            datePickerState,
+            onDismissRequest = { viewModel.showChoiceFromDate(false) },
+            onConfirm = { viewModel.changeFromDate(it); viewModel.showChoiceFromDate(false) },
+            onCancel = { viewModel.showChoiceFromDate(false) }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ChoiceToDateDialog(viewModel: SettingsViewModel, state: SettingsState) {
+    if (state.showChoiceToDate){
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = System.currentTimeMillis())
+        DialogDatePicker(
+            datePickerState,
+            onDismissRequest = { viewModel.showChoiceToDate(false) },
+            onConfirm = { viewModel.changeToDate(it) ; viewModel.showChoiceToDate(false) },
+            onCancel = { viewModel.showChoiceToDate(false) }
+        )
+    }
 }
 
 @Composable
@@ -237,24 +294,50 @@ private fun TitleWithTextField(
 }
 
 @Composable
-private fun TitleWithButton(title: String, textButton: String?, onClick: () -> Unit) {
+private fun TitleWithButton(
+    title: String,
+    textButton: String?,
+    onCancel: (() -> Unit)? = null,
+    onClick: () -> Unit
+) {
     TitleWithContent(title) {
         OutlinedButton(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp),
+                .height(48.dp)
+                .background(Colors.WHITE),
             onClick = onClick,
             shape = RoundedCornerShape(8.dp),
             border = BorderStroke(1.dp, Colors.ORANGE)
         ) {
-            Text(
-                text = textButton ?: "Не выбрано",
-                fontSize = 16.sp,
-                color = if (textButton.isNullOrEmpty()) Colors.GRAY_LIGHT else Colors.ORANGE,
-                fontWeight = FontWeight.W500,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ){
+                Text(
+                    text = textButton ?: "Не выбрано",
+                    fontSize = 16.sp,
+                    color = if (textButton.isNullOrEmpty()) Colors.GRAY_LIGHT else Colors.ORANGE,
+                    fontWeight = FontWeight.W500,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                onCancel?.let {
+                    IconButton(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .align(Alignment.CenterEnd),
+                        onClick = it
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Clear,
+                            contentDescription = null,
+                            tint = Colors.GRAY
+                        )
+                    }
+                }
+            }
+
         }
     }
 }

@@ -67,7 +67,9 @@ fun MultipleChoiceBottomSheet(
                 .padding(vertical = 24.dp, horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            Row {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
                     text = title,
                     color = Colors.GRAY,
@@ -92,7 +94,7 @@ fun MultipleChoiceBottomSheet(
                         },
                         text = "Очистить все",
                         color = Colors.ORANGE,
-                        fontSize = 14.sp,
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.W700
                     )
                 }
