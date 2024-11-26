@@ -35,6 +35,14 @@ object ApiFactory {
         }
     }
 
+    val postingClient = client.config {
+        defaultRequest {
+            url {
+                url("http://192.168.31.188:8080")
+            }
+        }
+    }
+
     val tourvisorClient = client.config {
         defaultRequest {
             url {

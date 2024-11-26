@@ -1,11 +1,11 @@
 package ru.topbun.toursadmin.presentation.screens.settings
 
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,10 +18,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material3.CalendarLocale
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DatePickerState
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,10 +31,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -43,80 +44,128 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.core.screen.Screen
+import ru.topbun.toursadmin.presentation.screens.settings.SettingsState.PostingScreenState.Success
+import ru.topbun.toursadmin.presentation.screens.settings.SettingsState.SettingsScreenState.Loading
+import ru.topbun.toursadmin.presentation.screens.settings.components.DialogDatePicker
+import ru.topbun.toursadmin.presentation.screens.settings.components.MultipleChoiceBottomSheet
+import ru.topbun.toursadmin.presentation.screens.settings.components.SingleChoiceBottomSheet
+import ru.topbun.toursadmin.presentation.screens.settings.components.StockItem
 import ru.topbun.toursadmin.presentation.theme.Colors
 import ru.topbun.toursadmin.utills.formatDate
-import java.time.Clock
 
 object SettingsScreen: Screen{
 
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     override fun Content() {
-        Column(
+        Box(
             modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(20.dp, 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .fillMaxSize(),
+            contentAlignment = Alignment.Center,
         ) {
+            val context = LocalContext.current
             val viewModel = rememberScreenModel { SettingsViewModel() }
             val state by viewModel.state.collectAsState()
+            val screenState = state.screenState
+            val postingState = state.postingState
+            when(screenState){
+                is SettingsState.SettingsScreenState.Error -> {
+                    LaunchedEffect(screenState) {
+                        Toast.makeText(context, screenState.msg, Toast.LENGTH_SHORT).show()
+                        viewModel.resetScreenState()
+                    }
+                }
+                Loading -> CircularProgressIndicator(color = Colors.ORANGE)
+                else -> {}
+            }
+            if (screenState != Loading){
+                ContentSuccess(viewModel, state)
+            }
+            if (postingState == Success){
+                LaunchedEffect(postingState) {
+                    Toast.makeText(context, "Конфиг обновлен", Toast.LENGTH_SHORT).show()
+                    viewModel.resetPostingState()
+                }
+            }
 
-            TitleWithButton("Город вылета", state.city?.name){ viewModel.showChoiceCity(true) }
-            TitleWithTextField(
-                title = "Ограничить дату вылета, на ближайшие дни",
-                placeholder = "Количество дней",
-                text = state.maxDays?.toString() ?: ""
-            ){ if(it.length < 4) viewModel.changeMaxDays(it)}
-            val countriesTextButton = state.countries.joinToString { it.name }.takeIf { state.countries.isNotEmpty() }
-            TitleWithButton("Страны", countriesTextButton){ viewModel.showChoiceCountry(true) }
-
-            val regionTextButton = state.regions.joinToString { it.name }.takeIf { state.regions.isNotEmpty() }
-            TitleWithButton("Регионы", regionTextButton){ viewModel.showChoiceRegion(true) }
-
-            val operatorTextButton = state.operators.joinToString { it.name }.takeIf { state.operators.isNotEmpty() }
-            TitleWithButton("Туроператоры", operatorTextButton){ viewModel.showChoiceOperator(true) }
-
-            TitleWithButton(
-                title = "С даты",
-                textButton = state.fromDate?.formatDate(),
-                onCancel = state.fromDate?.let{ { viewModel.changeFromDate(null) }}
-            ){ viewModel.showChoiceFromDate(true) }
-
-            TitleWithButton(
-                title = "По дату",
-                textButton = state.toDate?.formatDate(),
-                onCancel = state.toDate?.let{ { viewModel.changeToDate(null) }}
-            ){ viewModel.showChoiceToDate(true) }
-
-            TitleWithButton("Мин. звездность отелей", state.star?.name){ viewModel.showChoiceStars(true) }
-            TitleWithTextField(
-                title = "Мин. рейтинг отелей",
-                placeholder = "Рейтинг отелей",
-                text = state.minRating ?: "",
-                keyboardType = KeyboardType.Decimal
-            ){ if(it.length < 4) viewModel.changeRating(it) }
-            TitleWithButton("Тип питания", state.meal?.russian){ viewModel.showChoiceMeal(true) }
-            TitleWithTextField(
-                title = "Задержка между уникальными постами в днях",
-                placeholder = "Количество дней",
-                text = state.delayUniquePosts?.toString() ?: ""
-            ){ if(it.length < 4) viewModel.changeDelayUniquePosts(it) }
-            TitleWithTextField(
-                title = "Задержка между постами в минутах",
-                placeholder = "Количество минут",
-                text = state.delayPostingMinutes?.toString() ?: ""
-            ){ if(it.length < 4) viewModel.changeDelayPostingMinutes(it) }
-            TitleWithTextField(
-                title = "Домен сайта",
-                placeholder = "Введите домен",
-                text = state.domain,
-                keyboardType = KeyboardType.Text
-            ){ viewModel.changeDomain(it) }
-            SetPickDialogs(viewModel = viewModel)
         }
     }
+}
+
+@Composable
+fun ContentSuccess(viewModel: SettingsViewModel, state: SettingsState) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(20.dp, 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        TitleWithButton("Город вылета", state.city?.name){ viewModel.showChoiceCity(true) }
+        TitleWithTextField(
+            title = "Ограничить дату вылета, на ближайшие дни. Если 0 – период не ограничен",
+            placeholder = "Количество дней",
+            text = state.maxDays?.toString() ?: ""
+        ){ if(it.length < 4) viewModel.changeMaxDays(it)}
+        val countriesTextButton = state.countries.joinToString { it.name }.takeIf { state.countries.isNotEmpty() }
+        TitleWithButton("Страны", countriesTextButton){ viewModel.showChoiceCountry(true) }
+
+        val regionTextButton = state.regions.joinToString { it.name }.takeIf { state.regions.isNotEmpty() }
+        TitleWithButton("Регионы", regionTextButton){ viewModel.showChoiceRegion(true) }
+
+        val operatorTextButton = state.operators.joinToString { it.name }.takeIf { state.operators.isNotEmpty() }
+        TitleWithButton("Туроператоры", operatorTextButton){ viewModel.showChoiceOperator(true) }
+
+        TitleWithButton(
+            title = "С даты",
+            textButton = state.fromDate?.formatDate(),
+            onCancel = state.fromDate?.let{ { viewModel.changeFromDate(null) }}
+        ){ viewModel.showChoiceFromDate(true) }
+
+        TitleWithButton(
+            title = "По дату",
+            textButton = state.toDate?.formatDate(),
+            onCancel = state.toDate?.let{ { viewModel.changeToDate(null) }}
+        ){ viewModel.showChoiceToDate(true) }
+
+        TitleWithButton("Мин. звездность отелей", state.star?.name){ viewModel.showChoiceStars(true) }
+        TitleWithTextField(
+            title = "Мин. рейтинг отелей",
+            placeholder = "Рейтинг отелей",
+            text = state.minRating ?: "",
+            keyboardType = KeyboardType.Decimal
+        ){ if(it.length < 4) viewModel.changeRating(it) }
+        TitleWithButton("Тип питания", state.meal?.russian){ viewModel.showChoiceMeal(true) }
+        TitleWithTextField(
+            title = "Задержка между уникальными постами в днях",
+            placeholder = "Количество дней",
+            text = state.delayUniquePosts?.toString() ?: ""
+        ){ if(it.length < 4) viewModel.changeDelayUniquePosts(it) }
+        TitleWithTextField(
+            title = "Задержка между постами в минутах",
+            placeholder = "Количество минут",
+            text = state.delayPostingMinutes?.toString() ?: ""
+        ){ if(it.length < 4) viewModel.changeDelayPostingMinutes(it) }
+        TitleWithTextField(
+            title = "Домен сайта",
+            placeholder = "Введите домен",
+            text = state.domain,
+            keyboardType = KeyboardType.Text
+        ){ viewModel.changeDomain(it) }
+        TitleWithStocks(viewModel)
+        Button(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            colors = ButtonDefaults.buttonColors(Colors.ORANGE),
+            shape = RoundedCornerShape(8.dp),
+            onClick = viewModel::setConfig
+        ){
+            Text(text = "Отправить", color = Colors.GRAY, fontSize = 20.sp)
+        }
+        SetPickDialogs(viewModel = viewModel)
+    }
+
 }
 
 @Composable
@@ -130,6 +179,7 @@ private fun SetPickDialogs(viewModel: SettingsViewModel) {
     ChoiceOperatorDialog(viewModel, state)
     ChoiceFromDateDialog(viewModel, state)
     ChoiceToDateDialog(viewModel, state)
+    ChoiceStackToOperatorDialog(viewModel, state)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -157,6 +207,22 @@ private fun ChoiceToDateDialog(viewModel: SettingsViewModel, state: SettingsStat
             onConfirm = { viewModel.changeToDate(it) ; viewModel.showChoiceToDate(false) },
             onCancel = { viewModel.showChoiceToDate(false) }
         )
+    }
+}
+
+@Composable
+private fun ChoiceStackToOperatorDialog(viewModel: SettingsViewModel, state: SettingsState) {
+    if (state.showChoiceToStockOperator != null && state.operatorList.isNotEmpty()){
+        SingleChoiceBottomSheet(
+            title = "Туроператоры",
+            items = state.operatorList.map { it.name },
+            selectedItem = state.stocks.getOrNull(state.showChoiceToStockOperator)?.operator?.name,
+            onDismiss = { viewModel.showChoiceToStackOperator(null) }
+        ){
+            val operator = it?.let { state.operatorList[it] }
+            viewModel.changeStockOperator(operator, state.showChoiceToStockOperator)
+            viewModel.showChoiceToStackOperator(null)
+        }
     }
 }
 
@@ -258,7 +324,37 @@ private fun ChoiceStarsDialog(viewModel: SettingsViewModel, state: SettingsState
 }
 
 @Composable
-private fun TitleWithTextField(
+fun TitleWithStocks(viewModel: SettingsViewModel) {
+    val state by viewModel.state.collectAsState()
+    TitleWithContent(title = "Акции") {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            state.stocks.forEachIndexed { index, stock ->
+                StockItem(
+                    operator = stock.operator?.name,
+                    stock = stock.stock,
+                    onChangeOperator = { viewModel.showChoiceToStackOperator(index) },
+                    onChangeStock = { viewModel.changeStockText(it, index) },
+                    onClickRemove = { viewModel.removeStock(index) },
+                )
+            }
+            Button(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(36.dp),
+                colors = ButtonDefaults.buttonColors(Colors.ORANGE),
+                shape = RoundedCornerShape(8.dp),
+                onClick = viewModel::addStock
+            ){
+                Text(text = "Добавить акцию", color = Colors.GRAY, fontSize = 16.sp)
+            }
+        }
+    }
+}
+
+@Composable
+fun TitleWithTextField(
     title: String,
     placeholder: String,
     text: String,
@@ -266,79 +362,109 @@ private fun TitleWithTextField(
     onTextChange: (String) -> Unit
 ) {
     TitleWithContent(title) {
-        OutlinedTextField(
-            modifier = Modifier
-                .fillMaxWidth(),
-            value = text,
-            onValueChange = onTextChange,
-            textStyle = LocalTextStyle.current.copy(color = Colors.GRAY, fontSize = 18.sp),
-            placeholder = {
-                Text(text = placeholder, color = Colors.GRAY_LIGHT, fontSize = 18.sp)
-            },
-            shape = RoundedCornerShape(8.dp),
-            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-            singleLine = true,
-
-            colors = TextFieldDefaults.colors(
-                disabledContainerColor = Colors.WHITE,
-                focusedContainerColor = Colors.WHITE,
-                errorContainerColor = Colors.WHITE,
-                unfocusedContainerColor = Colors.WHITE,
-                focusedIndicatorColor = Colors.ORANGE,
-                unfocusedIndicatorColor = Colors.ORANGE,
-                disabledIndicatorColor = Colors.ORANGE,
-            ),
+        AppOutlinedTextField(
+            placeholder = placeholder,
+            text = text,
+            keyboardType = keyboardType,
+            onTextChange = onTextChange,
         )
+    }
+}
+
+@Composable
+fun AppOutlinedTextField(
+    modifier: Modifier = Modifier,
+    placeholder: String,
+    text: String,
+    keyboardType: KeyboardType = KeyboardType.Number,
+    onTextChange: (String) -> Unit
+) {
+    OutlinedTextField(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(0.dp),
+        value = text,
+        onValueChange = onTextChange,
+        textStyle = LocalTextStyle.current.copy(color = Colors.GRAY, fontSize = 18.sp),
+        placeholder = {
+            Text(text = placeholder, color = Colors.GRAY_LIGHT, fontSize = 18.sp)
+        },
+        shape = RoundedCornerShape(8.dp),
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        singleLine = true,
+
+        colors = TextFieldDefaults.colors(
+            disabledContainerColor = Colors.WHITE,
+            focusedContainerColor = Colors.WHITE,
+            errorContainerColor = Colors.WHITE,
+            unfocusedContainerColor = Colors.WHITE,
+            focusedIndicatorColor = Colors.ORANGE,
+            unfocusedIndicatorColor = Colors.ORANGE,
+            disabledIndicatorColor = Colors.ORANGE,
+        ),
+    )
+}
+
+@Composable
+fun AppOutlinedButton(
+    textButton: String?,
+    onCancel: (() -> Unit)? = null,
+    modifier:Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    OutlinedButton(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .background(Colors.WHITE),
+        onClick = onClick,
+        shape = RoundedCornerShape(8.dp),
+        border = BorderStroke(1.dp, Colors.ORANGE)
+    ) {
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ){
+            Text(
+                text = textButton ?: "Не выбрано",
+                fontSize = 16.sp,
+                color = if (textButton.isNullOrEmpty()) Colors.GRAY_LIGHT else Colors.ORANGE,
+                fontWeight = FontWeight.W500,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            onCancel?.let {
+                IconButton(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .align(Alignment.CenterEnd),
+                    onClick = it
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Clear,
+                        contentDescription = null,
+                        tint = Colors.GRAY
+                    )
+                }
+            }
+        }
 
     }
 }
 
 @Composable
-private fun TitleWithButton(
+fun TitleWithButton(
     title: String,
     textButton: String?,
     onCancel: (() -> Unit)? = null,
     onClick: () -> Unit
 ) {
     TitleWithContent(title) {
-        OutlinedButton(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp)
-                .background(Colors.WHITE),
+        AppOutlinedButton(
+            textButton = textButton,
+            onCancel = onCancel,
             onClick = onClick,
-            shape = RoundedCornerShape(8.dp),
-            border = BorderStroke(1.dp, Colors.ORANGE)
-        ) {
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ){
-                Text(
-                    text = textButton ?: "Не выбрано",
-                    fontSize = 16.sp,
-                    color = if (textButton.isNullOrEmpty()) Colors.GRAY_LIGHT else Colors.ORANGE,
-                    fontWeight = FontWeight.W500,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                onCancel?.let {
-                    IconButton(
-                        modifier = Modifier
-                            .size(24.dp)
-                            .align(Alignment.CenterEnd),
-                        onClick = it
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Clear,
-                            contentDescription = null,
-                            tint = Colors.GRAY
-                        )
-                    }
-                }
-            }
-
-        }
+        )
     }
 }
 

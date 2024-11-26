@@ -1,6 +1,7 @@
 package ru.topbun.toursadmin.presentation.screens.settings
 
 import io.ktor.util.date.GMTDate
+import ru.topbun.models.operatorToStock.OperatorToStock
 import ru.topbun.toursadmin.models.city.City
 import ru.topbun.toursadmin.models.country.Country
 import ru.topbun.toursadmin.models.meal.Meal
@@ -24,6 +25,7 @@ data class SettingsState(
     val delayUniquePosts: Int? = null,
     val delayPostingMinutes: Int? = null,
     val domain: String = "",
+    val stocks: List<OperatorToStock> = emptyList(),
 
     val cityList: List<City> = emptyList(),
     val countryList: List<Country> = emptyList(),
@@ -40,14 +42,21 @@ data class SettingsState(
     val showChoiceOperators: Boolean = false,
     val showChoiceFromDate: Boolean = false,
     val showChoiceToDate: Boolean = false,
+    val showChoiceToStockOperator: Int? = null,
 
+    val postingState: PostingScreenState = PostingScreenState.Initial,
     val screenState: SettingsScreenState = SettingsScreenState.Initial
 ){
+
+    sealed interface PostingScreenState{
+        data object Initial: PostingScreenState
+        data object Success: PostingScreenState
+    }
 
     sealed interface SettingsScreenState{
         data object Initial: SettingsScreenState
         data object Loading: SettingsScreenState
-        data object Error: SettingsScreenState
+        data class Error(val msg: String): SettingsScreenState
         data object Success: SettingsScreenState
     }
 
