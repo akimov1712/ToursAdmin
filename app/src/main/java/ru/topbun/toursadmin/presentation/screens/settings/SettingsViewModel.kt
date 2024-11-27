@@ -109,6 +109,7 @@ class SettingsViewModel : ScreenModelState<SettingsState>(SettingsState()) {
                 delayUniquePosts = config.delayUniquePosts,
                 delayPostingMinutes = config.delayPostingMinutes,
                 domain = config.domain,
+                stocks = config.stocks
             )
         }
     }
