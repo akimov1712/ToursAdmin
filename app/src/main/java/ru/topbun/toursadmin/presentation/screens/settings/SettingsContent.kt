@@ -1,23 +1,36 @@
 package ru.topbun.toursadmin.presentation.screens.settings
 
+import android.annotation.SuppressLint
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -33,9 +46,12 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -91,82 +107,184 @@ object SettingsScreen: Screen{
     }
 }
 
-
-
 @Composable
 fun ContentSuccess(viewModel: SettingsViewModel, state: SettingsState) {
-    Column(
+    val state by viewModel.state.collectAsState()
+    println("State: ${state.selectableConfigId}")
+    if (state.selectableConfigId == null){
+        ChoiceConfig(state, viewModel)
+    } else {
+        BackHandler{ viewModel.changeSelectableConfigId(null) }
+        ManageConfig(viewModel)
+    }
+
+
+}
+
+@SuppressLint("UnrememberedMutableInteractionSource")
+@Composable
+private fun ChoiceConfig(
+    state: SettingsState,
+    viewModel: SettingsViewModel
+) {
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(20.dp, 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(24.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        TitleWithButton("Город вылета", state.city?.name){ viewModel.showChoiceCity(true) }
-        TitleWithTextField(
-            title = "Ограничить дату вылета, на ближайшие дни. Если 0 – период не ограничен",
-            placeholder = "Количество дней",
-            text = state.maxDays?.toString() ?: ""
-        ){ if(it.length < 4) viewModel.changeMaxDays(it)}
-        val countriesTextButton = state.countries.joinToString { it.name }.takeIf { state.countries.isNotEmpty() }
-        TitleWithButton("Страны", countriesTextButton){ viewModel.showChoiceCountry(true) }
+        LazyVerticalGrid(
+            modifier = Modifier
+                .fillMaxSize(),
+            columns = GridCells.Fixed(3),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            itemsIndexed(
+                items = state.configs,
+            ) { index, config ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(1f)
+                        .background(Colors.WHITE)
+                        .clip(RoundedCornerShape(13.dp))
+                        .clickable(
+                            interactionSource = MutableInteractionSource(),
+                            indication = rememberRipple()
+                        ) { viewModel.changeSelectableConfigId(index) }
+                        .border(1.dp, Colors.ORANGE, RoundedCornerShape(13.dp))
+                        .padding(vertical = 24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = config.city?.name ?: "???",
+                        fontSize = 24.sp,
+                        color = Colors.ORANGE,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
 
-        val regionTextButton = state.regions.joinToString { it.name }.takeIf { state.regions.isNotEmpty() }
-        TitleWithButton("Регионы", regionTextButton){ viewModel.showChoiceRegion(true) }
-
-        val operatorTextButton = state.operators.joinToString { it.name }.takeIf { state.operators.isNotEmpty() }
-        TitleWithButton("Туроператоры", operatorTextButton){ viewModel.showChoiceOperator(true) }
-
-        TitleWithButton(
-            title = "С даты",
-            textButton = state.fromDate?.formatDate(),
-            onCancel = state.fromDate?.let{ { viewModel.changeFromDate(null) }}
-        ){ viewModel.showChoiceFromDate(true) }
-
-        TitleWithButton(
-            title = "По дату",
-            textButton = state.toDate?.formatDate(),
-            onCancel = state.toDate?.let{ { viewModel.changeToDate(null) }}
-        ){ viewModel.showChoiceToDate(true) }
-
-        TitleWithButton("Мин. звездность отелей", state.star?.name){ viewModel.showChoiceStars(true) }
-        TitleWithTextField(
-            title = "Мин. рейтинг отелей",
-            placeholder = "Рейтинг отелей",
-            text = state.minRating ?: "",
-            keyboardType = KeyboardType.Decimal
-        ){ if(it.length < 4) viewModel.changeRating(it) }
-        TitleWithButton("Тип питания", state.meal?.russian){ viewModel.showChoiceMeal(true) }
-        TitleWithTextField(
-            title = "Задержка между уникальными постами в днях",
-            placeholder = "Количество дней",
-            text = state.delayUniquePosts?.toString() ?: ""
-        ){ if(it.length < 4) viewModel.changeDelayUniquePosts(it) }
-        TitleWithTextField(
-            title = "Задержка между постами в минутах",
-            placeholder = "Количество минут",
-            text = state.delayPostingMinutes?.toString() ?: ""
-        ){ if(it.length < 4) viewModel.changeDelayPostingMinutes(it) }
-        TitleWithTextField(
-            title = "Домен сайта",
-            placeholder = "Введите домен",
-            text = state.domain,
-            keyboardType = KeyboardType.Text
-        ){ viewModel.changeDomain(it) }
-        TitleWithStocks(viewModel)
+        }
         Button(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
+                .height(36.dp)
+                .align(Alignment.BottomCenter),
             colors = ButtonDefaults.buttonColors(Colors.ORANGE),
             shape = RoundedCornerShape(8.dp),
-            onClick = viewModel::setConfig
-        ){
-            Text(text = "Отправить", color = Colors.GRAY, fontSize = 20.sp)
+            onClick = viewModel::addConfig
+        ) {
+            Text(text = "Добавить фильтр", color = Colors.GRAY, fontSize = 16.sp)
         }
-        SetPickDialogs(viewModel = viewModel)
     }
+}
+
+@Composable
+private fun ManageConfig(
+    viewModel: SettingsViewModel,
+) {
+    val state by viewModel.state.collectAsState()
+    state.stateConfig()?.let { config ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(20.dp, 10.dp, 20.dp, 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ){
+                IconButton(onClick = { viewModel.changeSelectableConfigId(null) }) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = null,
+                        tint = Colors.ORANGE
+                    )
+                }
+
+                IconButton(onClick = { viewModel.deleteConfig() }) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = null,
+                        tint = Colors.ORANGE
+                    )
+                }
+            }
+            TitleWithButton("Город вылета", config.city?.name) { viewModel.showChoiceCity(true) }
+            TitleWithTextField(
+                title = "Ограничить дату вылета, на ближайшие дни. Если 0 – период не ограничен",
+                placeholder = "Количество дней",
+                text = config.maxDays?.toString() ?: ""
+            ) { if (it.length < 4) viewModel.changeMaxDays(it) }
+            val countriesTextButton =
+                config.countries.joinToString { it.name }.takeIf { config.countries.isNotEmpty() }
+            TitleWithButton("Страны", countriesTextButton) { viewModel.showChoiceCountry(true) }
+
+            val regionTextButton =
+                config.regions.joinToString { it.name }.takeIf { config.regions.isNotEmpty() }
+            TitleWithButton("Регионы", regionTextButton) { viewModel.showChoiceRegion(true) }
+
+            val operatorTextButton =
+                config.operators.joinToString { it.name }.takeIf { config.operators.isNotEmpty() }
+            TitleWithButton("Туроператоры", operatorTextButton) { viewModel.showChoiceOperator(true) }
+
+            TitleWithButton(
+                title = "С даты",
+                textButton = config.fromDate?.formatDate(),
+                onCancel = config.fromDate?.let { { viewModel.changeFromDate(null) } }
+            ) { viewModel.showChoiceFromDate(true) }
+
+            TitleWithButton(
+                title = "По дату",
+                textButton = config.toDate?.formatDate(),
+                onCancel = config.toDate?.let { { viewModel.changeToDate(null) } }
+            ) { viewModel.showChoiceToDate(true) }
+
+            TitleWithButton(
+                "Мин. звездность отелей",
+                config.star?.name
+            ) { viewModel.showChoiceStars(true) }
+            TitleWithTextField(
+                title = "Мин. рейтинг отелей",
+                placeholder = "Рейтинг отелей",
+                text = config.minRating ?: "",
+                keyboardType = KeyboardType.Decimal
+            ) { if (it.length < 4) viewModel.changeRating(it) }
+            TitleWithButton("Тип питания", config.meal?.russian) { viewModel.showChoiceMeal(true) }
+            TitleWithTextField(
+                title = "Задержка между уникальными постами в днях",
+                placeholder = "Количество дней",
+                text = config.delayUniquePosts?.toString() ?: ""
+            ) { if (it.length < 4) viewModel.changeDelayUniquePosts(it) }
+            TitleWithTextField(
+                title = "Задержка между постами в минутах",
+                placeholder = "Количество минут",
+                text = config.delayPostingMinutes?.toString() ?: ""
+            ) { if (it.length < 4) viewModel.changeDelayPostingMinutes(it) }
+            TitleWithTextField(
+                title = "Домен сайта",
+                placeholder = "Введите домен",
+                text = config.domain,
+                keyboardType = KeyboardType.Text
+            ) { viewModel.changeDomain(it) }
+            TitleWithStocks(viewModel, state)
+            Button(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                colors = ButtonDefaults.buttonColors(Colors.ORANGE),
+                shape = RoundedCornerShape(8.dp),
+                onClick = viewModel::setConfig
+            ) {
+                Text(text = "Отправить", color = Colors.GRAY, fontSize = 20.sp)
+            }
+            SetPickDialogs(viewModel = viewModel)
+        }
+    } ?: run { viewModel.changeSelectableConfigId(null) }
 
 }
 
@@ -215,10 +333,11 @@ private fun ChoiceToDateDialog(viewModel: SettingsViewModel, state: SettingsStat
 @Composable
 private fun ChoiceStackToOperatorDialog(viewModel: SettingsViewModel, state: SettingsState) {
     if (state.showChoiceToStockOperator != null && state.operatorList.isNotEmpty()){
+        val config = state.stateConfig()
         SingleChoiceBottomSheet(
             title = "Туроператоры",
             items = state.operatorList.map { it.name },
-            selectedItem = state.stocks.getOrNull(state.showChoiceToStockOperator)?.operator?.name,
+            selectedItem = config?.stocks?.getOrNull(state.showChoiceToStockOperator)?.operator?.name,
             onDismiss = { viewModel.showChoiceToStackOperator(null) }
         ){
             val operator = it?.let { state.operatorList[it] }
@@ -231,10 +350,11 @@ private fun ChoiceStackToOperatorDialog(viewModel: SettingsViewModel, state: Set
 @Composable
 private fun ChoiceOperatorDialog(viewModel: SettingsViewModel, state: SettingsState) {
     if (state.showChoiceOperators && state.operatorList.isNotEmpty()){
+        val config = state.stateConfig()
         MultipleChoiceBottomSheet(
             title = "Туроператоры",
             items = state.operatorList.map { it.name },
-            selectedItems = state.operators.map { it.name },
+            selectedItems = config?.operators?.map { it.name } ?: emptyList(),
             onDismiss = { viewModel.showChoiceOperator(false) }
         ){
             val operators = it.map { state.operatorList[it] }
@@ -248,10 +368,11 @@ private fun ChoiceOperatorDialog(viewModel: SettingsViewModel, state: SettingsSt
 @Composable
 private fun ChoiceRegionDialog(viewModel: SettingsViewModel, state: SettingsState) {
     if (state.showChoiceRegions && state.regionList.isNotEmpty()){
+        val config = state.stateConfig()
         MultipleChoiceBottomSheet(
             title = "Регионы",
             items = state.regionList.map { it.name },
-            selectedItems = state.regions.map { it.name },
+            selectedItems = config?.regions?.map { it.name } ?: emptyList(),
             onDismiss = { viewModel.showChoiceRegion(false) }
         ){
             val regions = it.map { state.regionList[it] }
@@ -264,10 +385,11 @@ private fun ChoiceRegionDialog(viewModel: SettingsViewModel, state: SettingsStat
 @Composable
 private fun ChoiceCountryDialog(viewModel: SettingsViewModel, state: SettingsState) {
     if (state.showChoiceCountries && state.countryList.isNotEmpty()){
+        val config = state.stateConfig()
         MultipleChoiceBottomSheet(
             title = "Страны",
             items = state.countryList.map { it.name },
-            selectedItems = state.countries.map { it.name },
+            selectedItems = config?.countries?.map { it.name } ?: emptyList(),
             onDismiss = { viewModel.showChoiceCountry(false) }
         ){
             val countries = it.map { state.countryList[it] }
@@ -280,10 +402,11 @@ private fun ChoiceCountryDialog(viewModel: SettingsViewModel, state: SettingsSta
 @Composable
 private fun ChoiceCityDialog(viewModel: SettingsViewModel, state: SettingsState) {
     if (state.showChoiceCity && state.cityList.isNotEmpty()){
+        val config = state.stateConfig()
         SingleChoiceBottomSheet(
             title = "Город вылета",
             items = state.cityList.map { it.name },
-            selectedItem = state.city?.name,
+            selectedItem = config?.city?.name,
             onDismiss = { viewModel.showChoiceCity(false) }
         ){
             val city = it?.let { state.cityList[it] }
@@ -296,10 +419,11 @@ private fun ChoiceCityDialog(viewModel: SettingsViewModel, state: SettingsState)
 @Composable
 private fun ChoiceMealDialog(viewModel: SettingsViewModel, state: SettingsState) {
     if (state.showChoiceMeal && state.mealList.isNotEmpty()){
+        val config = state.stateConfig()
         SingleChoiceBottomSheet(
             title = "Тип питания",
             items = state.mealList.map { it.russian + " (${it.name})" },
-            selectedItem = state.meal?.name,
+            selectedItem = config?.meal?.name,
             onDismiss = { viewModel.showChoiceMeal(false) }
         ){
             val meal = it?.let { state.mealList[it] }
@@ -312,10 +436,11 @@ private fun ChoiceMealDialog(viewModel: SettingsViewModel, state: SettingsState)
 @Composable
 private fun ChoiceStarsDialog(viewModel: SettingsViewModel, state: SettingsState) {
     if (state.showChoiceStars && state.starsList.isNotEmpty()){
+        val config = state.stateConfig()
         SingleChoiceBottomSheet(
             title = "Минимальная звездность отеля",
             items = state.starsList.map { it.name },
-            selectedItem = state.star?.name,
+            selectedItem = config?.star?.name,
             onDismiss = { viewModel.showChoiceStars(false) }
         ){
             val star = it?.let { state.starsList[it] }
@@ -326,13 +451,13 @@ private fun ChoiceStarsDialog(viewModel: SettingsViewModel, state: SettingsState
 }
 
 @Composable
-fun TitleWithStocks(viewModel: SettingsViewModel) {
-    val state by viewModel.state.collectAsState()
+fun TitleWithStocks(viewModel: SettingsViewModel, state: SettingsState) {
     TitleWithContent(title = "Акции") {
         Column(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            state.stocks.forEachIndexed { index, stock ->
+            val config = state.stateConfig()
+            config?.stocks?.forEachIndexed { index, stock ->
                 StockItem(
                     operator = stock.operator?.name,
                     stock = stock.stock,

@@ -15,7 +15,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val controller = rememberSystemUiController()
             controller.setStatusBarColor(Colors.ORANGE, true)
-            Navigator(LoginScreen)
+            Navigator(SettingsScreen)
         }
     }
 }

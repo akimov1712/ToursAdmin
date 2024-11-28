@@ -1,5 +1,10 @@
 package ru.topbun.toursadmin.presentation.screens.settings
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import cafe.adriel.voyager.core.model.screenModelScope
 import io.ktor.util.date.GMTDate
 import kotlinx.coroutines.launch
@@ -13,7 +18,7 @@ import ru.topbun.toursadmin.models.region.Region
 import ru.topbun.toursadmin.models.stars.Star
 import ru.topbun.toursadmin.network.PostingApi
 import ru.topbun.toursadmin.network.TourvisorApi
-import ru.topbun.toursadmin.presentation.screens.login.LoginState
+import ru.topbun.toursadmin.presentation.screens.settings.SettingsState.ConfigState.Companion.fromConfig
 import ru.topbun.toursadmin.presentation.screens.settings.SettingsState.PostingScreenState.Success
 import ru.topbun.toursadmin.presentation.screens.settings.SettingsState.SettingsScreenState
 import ru.topbun.toursadmin.repository.PostingRepository
@@ -29,60 +34,61 @@ class SettingsViewModel : ScreenModelState<SettingsState>(SettingsState()) {
     private val tourvisorRepository = TourvisorRepository(tourvisorApi)
     private val postingRepository = PostingRepository(postingApi)
 
-    fun changeStockText(text: String, index: Int) = updateState {
-        val newList = stocks.mapIndexed { i, stock ->
+    fun changeSelectableConfigId(id: Int?) = updateState {copy(selectableConfigId = id) }
+
+    fun addConfig() = updateState {
+        copy(configs = configs + SettingsState.ConfigState())
+    }
+
+    fun deleteConfig() = updateState {
+        val newConfigs = configs.filterIndexed { index, _ -> index != selectableConfigId }
+        if (newConfigs.isNotEmpty()){
+            copy(configs = newConfigs, selectableConfigId = null)
+        } else {
+            copy(screenState = SettingsScreenState.Error("Должен быть хотя-бы один фильтр"))
+        }
+    }
+
+    fun changeStockText(text: String, index: Int){
+        val config = getConfigWithSelectable()
+        val newList = config.stocks.mapIndexed { i, stock ->
             if (index == i) stock.copy(stock = text) else stock
         }
-        copy(stocks = newList)
+         updateNewConfig(config.copy(stocks = newList))
     }
 
-    fun changeStockOperator(operator: Operator?, index: Int) = updateState {
-        val newList = stocks.mapIndexed { i, stock ->
+    fun changeStockOperator(operator: Operator?, index: Int){
+        val config = getConfigWithSelectable()
+        val newList = config.stocks.mapIndexed { i, stock ->
             if (index == i) stock.copy(operator = operator) else stock
         }
-        copy(stocks = newList)
+        updateNewConfig(config.copy(stocks = newList))
     }
 
-    fun addStock() = updateState { copy(stocks = stateValue.stocks.toList() + OperatorToStock(null, "")) }
+    fun addStock() {
+        val config = getConfigWithSelectable()
+        updateNewConfig(config.copy(stocks = config.stocks.toList() + OperatorToStock(null, "")))
+    }
 
-    fun removeStock(index: Int) = updateState {
-        val stocks = stateValue.stocks.toMutableList().apply {
+    fun removeStock(index: Int) {
+        val config = getConfigWithSelectable()
+        val stocks = config.stocks.toMutableList().apply {
             removeAt(index)
         }
-        copy(stocks = stocks)
+        updateNewConfig(config.copy(stocks = stocks))
     }
 
     fun setConfig() = screenModelScope.launch {
         try {
             updateState { copy(screenState = SettingsScreenState.Loading) }
-            val city = stateValue.city ?: throw RuntimeException("Поле: \"Город вылета\" не может быть пустым")
-            val rating = stateValue.minRating?.toFloatOrNull() // TODO питание не работает
-            val delayUniquePosts = stateValue.delayUniquePosts ?: throw RuntimeException("Поле: \"Задержка между уникальными постами в днях\" не может быть пустым")
-            val delayPostingMinutes = stateValue.delayPostingMinutes ?: throw RuntimeException("Поле: \"Задержка между постами в минутах\" не может быть пустым")
-            val domain = stateValue.domain.takeIf { it.isNotEmpty() } ?: throw RuntimeException("Поле: \"Домен сайта\" не может быть пустым")
-            val stocks = stateValue.stocks.filter { it.operator != null && it.stock.isNotEmpty() }
-            val config = Config(
-                city = city,
-                maxDays = stateValue.maxDays ?: 0,
-                countries = stateValue.countries,
-                regions = stateValue.regions,
-                operators = stateValue.operators,
-                dateFrom = stateValue.fromDate?.formatDate(),
-                dateTo = stateValue.toDate?.formatDate(),
-                stars = stateValue.star,
-                rating = rating,
-                meal = stateValue.meal,
-                delayUniquePosts = delayUniquePosts,
-                delayPostingMinutes = delayPostingMinutes,
-                domain = domain,
-                stocks = stocks
-            )
-            postingRepository.setConfig(config)
+            val configs = stateValue.configs.map {
+                it.toConfig()
+            }
+            postingRepository.setConfig(configs)
             updateState { copy(
                 screenState = SettingsScreenState.Success,
                 postingState = Success
             ) }
-            println(stateValue)
         } catch (e: Exception) {
             e.printStackTrace()
             updateState { copy(screenState = SettingsScreenState.Error(e.message ?: "Произошла ошибка")) }
@@ -92,56 +98,89 @@ class SettingsViewModel : ScreenModelState<SettingsState>(SettingsState()) {
     fun resetScreenState() = updateState { copy(screenState = SettingsScreenState.Initial) }
     fun resetPostingState() = updateState { copy(postingState = SettingsState.PostingScreenState.Initial) }
 
+    fun getConfigWithSelectable() = stateValue.selectableConfigId?.let { stateValue.configs[it] } ?: throw RuntimeException("editable config not selected")
+
+    private fun updateNewConfig(config: SettingsState.ConfigState) = updateState {
+        val updateConfigs = configs.mapIndexed { index, conf ->
+            if (index == selectableConfigId) config else conf
+        }
+        copy(configs = updateConfigs)
+    }
+
     private fun loadConfig() = screenModelScope.launch {
         val config = postingRepository.getConfig()
-        updateState {
-            copy(
-                city = config.city,
-                maxDays = config.maxDays,
-                countries = config.countries,
-                regions = config.regions,
-                operators = config.operators,
-                fromDate = config.dateFrom?.parseToGTMDate(),
-                toDate = config.dateTo?.parseToGTMDate(),
-                star = config.stars,
-                minRating = config.rating?.toString(),
-                meal = config.meal,
-                delayUniquePosts = config.delayUniquePosts,
-                delayPostingMinutes = config.delayPostingMinutes,
-                domain = config.domain,
-                stocks = config.stocks
-            )
-        }
+        val configStates = config.map { fromConfig(it) }
+        updateState { copy(configStates) }
     }
 
     fun changeMaxDays(value: String) {
+        val config = getConfigWithSelectable()
         val maxDays = value.toIntOrNull() ?: run { if (value.isEmpty()) null else return }
-        updateState { copy(maxDays = maxDays) }
+        updateNewConfig(config.copy(maxDays = maxDays))
     }
 
     fun changeDelayPostingMinutes(value: String) {
+        val config = getConfigWithSelectable()
         val delay = value.toIntOrNull() ?: run { if (value.isEmpty()) null else return }
-        updateState { copy(delayPostingMinutes = delay) }
+        updateNewConfig(config.copy(delayPostingMinutes = delay))
     }
 
     fun changeDelayUniquePosts(value: String) {
+        val config = getConfigWithSelectable()
         val delay = value.toIntOrNull() ?: run { if (value.isEmpty()) null else return }
-        updateState { copy(delayUniquePosts = delay) }
+        updateNewConfig(config.copy(delayUniquePosts = delay))
     }
 
     fun changeRating(value: String) {
-        updateState { copy(minRating = value) }
+        val config = getConfigWithSelectable()
+        updateNewConfig(config.copy(minRating = value))
     }
 
-    fun changeDomain(domain: String) = updateState { copy(domain = domain) }
-    fun changeCity(city: City?) = updateState { copy(city = city) }
-    fun changeStars(star: Star?) = updateState { copy(star = star) }
-    fun changeMeal(meal: Meal?) = updateState { copy(meal = meal) }
-    fun changeCountries(countries: List<Country>) = updateState { copy(countries = countries) }
-    fun changeRegions(regions: List<Region>) = updateState { copy(regions = regions) }
-    fun changeOperators(operators: List<Operator>) = updateState { copy(operators = operators) }
-    fun changeFromDate(date: GMTDate?) = updateState { copy(fromDate = date) }
-    fun changeToDate(date: GMTDate?) = updateState { copy(toDate = date) }
+    fun changeDomain(domain: String){
+        val config = getConfigWithSelectable()
+        updateNewConfig(config.copy(domain = domain))
+    }
+
+    fun changeCity(city: City?){
+        val config = getConfigWithSelectable()
+        updateNewConfig(config.copy(city = city))
+    }
+
+    fun changeStars(star: Star?){
+        val config = getConfigWithSelectable()
+        updateNewConfig(config.copy(star = star))
+    }
+
+    fun changeMeal(meal: Meal?){
+        val config = getConfigWithSelectable()
+        updateNewConfig(config.copy(meal = meal))
+    }
+
+    fun changeCountries(countries: List<Country>){
+        val config = getConfigWithSelectable()
+        updateNewConfig(config.copy(countries = countries))
+    }
+
+    fun changeRegions(regions: List<Region>){
+        val config = getConfigWithSelectable()
+        updateNewConfig(config.copy(regions = regions))
+    }
+
+    fun changeOperators(operators: List<Operator>){
+        val config = getConfigWithSelectable()
+        updateNewConfig(config.copy(operators = operators))
+    }
+
+    fun changeFromDate(date: GMTDate?){
+        val config = getConfigWithSelectable()
+        updateNewConfig(config.copy(fromDate = date))
+    }
+
+    fun changeToDate(date: GMTDate?){
+        val config = getConfigWithSelectable()
+        updateNewConfig(config.copy(toDate = date))
+    }
+
 
     fun showChoiceCity(value: Boolean) = updateState { copy(showChoiceCity = value) }
     fun showChoiceStars(value: Boolean) = updateState { copy(showChoiceStars = value) }
@@ -173,7 +212,6 @@ class SettingsViewModel : ScreenModelState<SettingsState>(SettingsState()) {
                     screenState = SettingsScreenState.Success
                 )
             }
-            println(stateValue)
         } catch (e: Exception) {
             e.printStackTrace()
             updateState { copy(screenState = SettingsScreenState.Error(e.message ?: "Произошла ошибка")) }
@@ -185,4 +223,9 @@ class SettingsViewModel : ScreenModelState<SettingsState>(SettingsState()) {
         initialLoading()
     }
 
+}
+
+@Composable
+fun SettingsState.stateConfig(): SettingsState.ConfigState? {
+    return this.selectableConfigId?.let { this.configs.getOrNull(it) }
 }

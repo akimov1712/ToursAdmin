@@ -10,10 +10,10 @@ class PostingApi(
     private val apiFactory: ApiFactory = ApiFactory
 ) {
 
-    suspend fun setConfig(config: Config) = apiFactory.postingClient.post("/config"){
-        setBody(config)
+    suspend fun setConfig(configs: List<Config>) = apiFactory.postingClient.post("/config"){
+        setBody(configs)
     }
 
-    suspend fun getConfig() = apiFactory.postingClient.get("/config").body<Config>()
+    suspend fun getConfig() = apiFactory.postingClient.get("/config").body<List<Config>>()
 
 }

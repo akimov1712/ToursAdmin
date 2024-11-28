@@ -7,6 +7,6 @@ class PostingRepository(private val api: PostingApi) {
 
     suspend fun getConfig() = api.getConfig()
 
-    suspend fun setConfig(config: Config) = api.setConfig(config)
+    suspend fun setConfig(configs: List<Config>) = api.setConfig(configs)
 
 }
