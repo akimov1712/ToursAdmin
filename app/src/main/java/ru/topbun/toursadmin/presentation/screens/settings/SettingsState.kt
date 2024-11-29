@@ -38,6 +38,7 @@ data class SettingsState(
 ){
 
     data class ConfigState(
+        val title: String = "",
         val city: City? = null,
         val maxDays: Int? = null,
         val countries: List<Country> = emptyList(),
@@ -56,6 +57,7 @@ data class SettingsState(
 
         companion object{
             fun fromConfig(config: Config) = ConfigState(
+                title = config.title,
                 city = config.city,
                 maxDays = config.maxDays,
                 countries = config.countries,
@@ -81,6 +83,7 @@ data class SettingsState(
             val domain = this.domain.takeIf { it.isNotEmpty() } ?: throw RuntimeException("Поле: \"Домен сайта\" не может быть пустым")
             val stocks = this.stocks.filter { it.operator != null && it.stock.isNotEmpty() }
             return Config(
+                title = title,
                 city = city,
                 maxDays = this.maxDays ?: 0,
                 countries = this.countries,

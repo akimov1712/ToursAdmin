@@ -11,6 +11,7 @@ import ru.topbun.toursadmin.models.stars.Star
 
 @Serializable
 data class Config(
+    val title: String,
     val city: City?,
     val maxDays: Int,
     val countries: List<Country>,

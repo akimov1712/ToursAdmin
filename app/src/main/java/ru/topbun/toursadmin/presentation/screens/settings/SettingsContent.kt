@@ -18,12 +18,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -53,6 +56,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -133,32 +137,30 @@ private fun ChoiceConfig(
             .padding(24.dp),
         contentAlignment = Alignment.Center,
     ) {
-        LazyVerticalGrid(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize(),
-            columns = GridCells.Fixed(3),
             verticalArrangement = Arrangement.spacedBy(10.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             itemsIndexed(
                 items = state.configs,
             ) { index, config ->
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(1f)
+                        .fillMaxWidth()
                         .background(Colors.WHITE)
-                        .clip(RoundedCornerShape(13.dp))
+                        .clip(RoundedCornerShape(8.dp))
                         .clickable(
                             interactionSource = MutableInteractionSource(),
                             indication = rememberRipple()
                         ) { viewModel.changeSelectableConfigId(index) }
-                        .border(1.dp, Colors.ORANGE, RoundedCornerShape(13.dp))
-                        .padding(vertical = 24.dp),
+                        .border(1.dp, Colors.ORANGE, RoundedCornerShape(8.dp))
+                        .padding(16.dp, 20.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = config.city?.name ?: "???",
-                        fontSize = 24.sp,
+                        text = config.title.takeIf { it.isNotEmpty() } ?: "Без названия",
+                        fontSize = 20.sp,
                         color = Colors.ORANGE,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -197,6 +199,7 @@ private fun ManageConfig(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ){
                 IconButton(onClick = { viewModel.changeSelectableConfigId(null) }) {
                     Icon(
@@ -205,7 +208,28 @@ private fun ManageConfig(
                         tint = Colors.ORANGE
                     )
                 }
-
+                Box(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    if (config.title.isEmpty()){
+                        Text(
+                            text = "Названия",
+                            color = Colors.GRAY_LIGHT,
+                            fontSize = 20.sp
+                        )
+                    }
+                    BasicTextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        value = config.title,
+                        onValueChange = viewModel::changeTitle,
+                        singleLine = true,
+                        textStyle = TextStyle(
+                            color = Colors.ORANGE,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.W600
+                        )
+                    )
+                }
                 IconButton(onClick = { viewModel.deleteConfig() }) {
                     Icon(
                         imageVector = Icons.Default.Delete,
