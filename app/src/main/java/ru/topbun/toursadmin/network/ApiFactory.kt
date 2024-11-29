@@ -38,7 +38,7 @@ object ApiFactory {
     val postingClient = client.config {
         defaultRequest {
             url {
-                url("http://85.198.110.248:8080")
+                url("http://185.105.89.30:8080")
             }
         }
     }
