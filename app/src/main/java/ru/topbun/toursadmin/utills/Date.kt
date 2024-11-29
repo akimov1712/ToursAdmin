@@ -8,7 +8,7 @@ import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
 
-fun GMTDate.formatDate() = "${String.format("%02d",this.dayOfMonth)}.${String.format("%02d",this.month.ordinal)}.${this.year}"
+fun GMTDate.formatDate() = "${String.format("%02d",this.dayOfMonth)}.${String.format("%02d",this.month.ordinal + 1)}.${this.year}"
 
 fun String.parseToGTMDate(): GMTDate{
     val parts = this.split(".")
