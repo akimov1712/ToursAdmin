@@ -295,6 +295,18 @@ private fun ManageConfig(
                 text = config.domain,
                 keyboardType = KeyboardType.Text
             ) { viewModel.changeDomain(it) }
+            TitleWithTextField(
+                title = "ID телеграмм группы",
+                placeholder = "Введите id",
+                text = config.tgId,
+                keyboardType = KeyboardType.Text
+            ) { viewModel.changeTgId(it) }
+            TitleWithTextField(
+                title = "ID вконтакте группы",
+                placeholder = "Введите id",
+                text = config.vkId,
+                keyboardType = KeyboardType.Text
+            ) { viewModel.changeVkId(it) }
             TitleWithStocks(viewModel, state)
             Button(
                 modifier = Modifier

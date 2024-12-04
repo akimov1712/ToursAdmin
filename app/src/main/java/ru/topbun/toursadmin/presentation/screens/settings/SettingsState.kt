@@ -52,6 +52,8 @@ data class SettingsState(
         val delayUniquePosts: Int? = 7,
         val delayPostingMinutes: Int? = null,
         val domain: String = "https://tyrmarket.ru",
+        val tgId: String = "",
+        val vkId: String = "",
         val stocks: List<OperatorToStock> = emptyList(),
     ){
 
@@ -71,6 +73,8 @@ data class SettingsState(
                 delayUniquePosts = config.delayUniquePosts,
                 delayPostingMinutes = config.delayPostingMinutes,
                 domain = config.domain,
+                tgId = config.tgId,
+                vkId = config.vkId,
                 stocks = config.stocks
             )
         }
@@ -97,6 +101,8 @@ data class SettingsState(
                 delayUniquePosts = delayUniquePosts,
                 delayPostingMinutes = delayPostingMinutes,
                 domain = domain,
+                vkId = this.vkId,
+                tgId = this.tgId,
                 stocks = stocks
             )
         }

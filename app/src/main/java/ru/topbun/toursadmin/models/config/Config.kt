@@ -25,5 +25,7 @@ data class Config(
     val delayUniquePosts: Int,
     val delayPostingMinutes: Int,
     val domain: String,
+    val tgId: String,
+    val vkId: String,
     val stocks: List<OperatorToStock>
 )

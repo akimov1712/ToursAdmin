@@ -113,6 +113,17 @@ class SettingsViewModel : ScreenModelState<SettingsState>(SettingsState()) {
         updateState { copy(configStates) }
     }
 
+    fun changeTgId(value: String) {
+        val config = getConfigWithSelectable()
+        updateNewConfig(config.copy(tgId = value))
+    }
+
+
+    fun changeVkId(value: String) {
+        val config = getConfigWithSelectable()
+        updateNewConfig(config.copy(vkId = value))
+    }
+
     fun changeMaxDays(value: String) {
         val config = getConfigWithSelectable()
         val maxDays = value.toIntOrNull() ?: run { if (value.isEmpty()) null else return }
